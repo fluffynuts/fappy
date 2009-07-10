@@ -7,18 +7,9 @@ try:
 except:
 	pass
 import time
-try:
-  from mutagen.oggvorbis import OggVorbis
-  from mutagen.easyid3 import EasyID3
-  from mutagen.mp3 import MP3
-except:
-  print("fappy requires the mutagen library to work. You can get it here:")
-  print("http://code.google.com/p/quodlibet/wiki/Mutagen")
-  print("or, if you're using a debian-based OS, do something like:")
-  print("sudo apt-get install python-mutagen")
-  print("This script is known to work with versions 1.4-1.6 and may")
-  print("work with others as well")
-  sys.exit(1)
+from mutagen.oggvorbis import OggVorbis
+from mutagen.easyid3 import EasyID3
+from mutagen.mp3 import MP3
 
 music_extensions = [".mp3", ".ogg", ".mp2", ".wav", ".wma"]
 
