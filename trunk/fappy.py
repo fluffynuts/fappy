@@ -222,6 +222,10 @@ if __name__ == "__main__":
 
   m3u = []
   start = time.time()
+  if len(playlistfile) == 0:
+    print("No output playlist file specified. Perhaps try reading the help (-h)")
+    sys.exit(1)
+
   for d in dirs:
     print("Listing contents of '" + d + "'...")
     files = ls_R(d)
