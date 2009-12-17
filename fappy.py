@@ -196,7 +196,7 @@ def info_to_xspf_item(info):
       I have very simple XML needs: I might as well DIY"""
   ret = []
   ret.append("    <track>")
-  ret.append("      <location>%s</location>" % xspf_location(info["file"]))
+  ret.append("      <location>%s</location>" % xml_safe(xspf_location(info["file"])))
   title = ""
   for k in ["artist", "year", "album", "tracknumber", "title"]:
     if info.has_key(k):
@@ -206,7 +206,7 @@ def info_to_xspf_item(info):
         title += info[k]
       except:
         title += convertText(info[k])
-  ret.append("      <title>%s</title>" % title)
+  ret.append("      <title>%s</title>" % xml_safe(title))
   ret.append("      <duration>%s</duration>" % (int(float(info["length"])) * 1000))
   ret.append("    </track>")
   return "\n".join(ret)
