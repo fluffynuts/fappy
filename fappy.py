@@ -12,11 +12,14 @@ except:
 	pass
 import time
 try:
+  import mutagen
+  if (mutagen.version[0] < 1) or (mutagen.version[1] < 20):
+    raise Exception("Mutagen minimum version requirement not met")
   from mutagen.oggvorbis import OggVorbis
   from mutagen.easyid3 import EasyID3
   from mutagen.mp3 import MP3
 except:
-  print("fappy requires the mutagen library to work. You can get it here:")
+  print("fappy requires the mutagen library (at least version 1.20) to work. You can get it here:")
   print("http://code.google.com/p/mutagen")
   print("or, via subversion, with a command like:")
   print("svn co http://mutagen.googlecode.com/svn/trunk mutagen")
@@ -39,7 +42,7 @@ def convertText(text, action = "replace"):
   try:
     temp = unicode(text, "utf-8")
     fixed = unicodedata.normalize('NFKD', temp).encode('ASCII', action)
-    print("convertText: fixed: %s" %fixed)
+    print("convertText: fixed: %s" % fixed)
     return fixed
   except Exception, errorInfo:
     ret = ""
@@ -259,7 +262,8 @@ def get_mp3_tag_info(f):
 
 def m3u_get_mp3_tag_info(f):
   info = get_mp3_tag_info(f)
-  return info_to_m3u(info)
+  i = info_to_m3u(info)
+  return i
 
 def m3u_get_ogg_tag_info(f):
   info = get_ogg_tag_info(f)
@@ -283,7 +287,7 @@ def info_to_m3u(info):
   ret = ""
   for k in ["artist", "album", "year", "tracknumber", "title"]:
     if info.has_key(k):
-      val = str(convertText(info[k][0]))
+      val = str(convertText(info[k]))
       val = val.strip()
       # ignore empty tags
       if len(val) == 0:
@@ -312,6 +316,9 @@ def info_to_m3u(info):
   return ret
 
 def status(s):
+  global quiet
+  if quiet:
+    return
   global blankstr
   if (len(s) >= len(blankstr)):
     s = s[0:len(blankstr)-3]
@@ -331,6 +338,7 @@ def get_hr_time(t):
 
 def main():
   global blankstr
+  global quiet
   blankstr = ""
 
   if len(sys.argv) == 0:
@@ -343,11 +351,17 @@ def main():
   dirs = []
   lastarg = ""
   append = False
+  quiet = False
   playlist_type = 0
   for arg in sys.argv[1:]:
     if arg == "-x":
       # set playlist type to xspf
       playlist_type = 1
+      lastarg = ""
+      continue
+    if arg == "-q":
+      quiet = True
+      lastarg = ""
       continue
     if arg == "-m":
       # set playlist type to m3u (default)
