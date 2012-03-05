@@ -383,7 +383,7 @@ def main():
     numfiles = len(files)
     idx = 0
     gen_start = time.time()
-    for f in files[1:]:
+    for f in files:
       idx += 1
       if f[0] != os.sep:
         fpath = d + os.sep + f
