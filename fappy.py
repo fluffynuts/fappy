@@ -292,8 +292,12 @@ def info_to_m3u(info):
       if k == "tracknumber" and len(val) < 2:
         val = "0" + val
       # ignore zero year
-      if k == "year" and int(val) == 0:
-        continue
+      try:
+        if k == "year" and int(val) == 0:
+          continue
+      except:
+        # ignore badly-formatted year
+        pass
       if ret != "":
         ret += " - "
       ret += val
@@ -302,7 +306,7 @@ def info_to_m3u(info):
   # fall back on file name
   if ret == "":
     ret += os.path.splitext(os.path.basename(info["file"]))[0]
-  ret = "#EXTINF:" + str(int(info["length"])) + "," + ret
+  ret = "#EXTINF:" + str(int(float(info["length"]))) + "," + ret
   # add the file path for the playlist entry
   ret += "\n%s" % info["file"]
   return ret
@@ -419,6 +423,6 @@ if __name__ == "__main__":
     main()
   except KeyboardInterrupt:
     print("\n (Aborted)")
-  except Exception, e:
-    print("\n FAIL: %s" % str(e))
+  #except Exception, e:
+  #  print("\n FAIL: %s" % str(e))
 
