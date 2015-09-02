@@ -18,7 +18,8 @@ try:
   from mutagen.oggvorbis import OggVorbis
   from mutagen.easyid3 import EasyID3
   from mutagen.mp3 import MP3
-except:
+except Exception as ex:
+  print(ex)
   print("fappy requires the mutagen library (at least version 1.20) to work. You can get it here:")
   print("http://code.google.com/p/mutagen")
   print("or, via subversion, with a command like:")
@@ -44,7 +45,7 @@ def convertText(text, action = "replace"):
     fixed = unicodedata.normalize('NFKD', temp).encode('ASCII', action)
     print("convertText: fixed: %s" % fixed)
     return fixed
-  except Exception, errorInfo:
+  except Exception as errorInfo:
     ret = ""
     for c in text:
       o = ord(c)
@@ -52,34 +53,55 @@ def convertText(text, action = "replace"):
         ret += c
     return ret
 
-def ls_R(dir):
-  ls = [dir]
-  os.path.walk(dir, walk_cb, ls)
-  ls = ls[1:]
-  sys.stdout.write("\r" + blankstr + "\r")
-  sys.stdout.flush()
-  ls.sort()
-  return ls
+def log(s):
+  try:
+    print(s.encode('utf-8'))
+  except Exception as e:
+    print(s)
 
-def walk_cb(ls, dirname, fnames):
-  global music_extensions
-  d = dirname[len(ls[0]):]
-  for f in fnames:
-    fpath = os.path.join(dirname, f)
-    if os.path.isfile(fpath):
-      if music_extensions.count(os.path.splitext(f)[1].lower()) > 0:
-        ls.append(os.path.join(d, f))
-        items = len(ls) - 1
-        if items % 100 == 0:
-          sys.stdout.write("\r" + blankstr + "\r" + str(items))
-          sys.stdout.flush()
+list_item_count = 0
+
+def ls_R(dir):
+  allItems = ls_R_ALL(dir)
+  files = []
+  for f in allItems:
+    if os.path.isfile(f):
+      files.append(f)
+  status("")
+  print("")
+  for item in allItems:
+    if os.path.isfile(item):
+      files.append(item)
+  log("%i files" % (len(files)))
+  return files
+
+def ls_R_ALL(dir):
+  global list_item_count
+  contents = os.listdir(dir)
+  list_item_count += len(contents)
+  status("%i items found..." % (list_item_count))
+  contents_copy = contents[:]
+  contents = []
+  for f in contents_copy:
+    fullPath = os.path.join(dir, f)
+    if os.path.isfile(fullPath):
+      contents.append(fullPath)
+  for d in contents_copy:
+    subPath = os.path.join(dir, d)
+    if os.path.isdir(subPath):
+      if d == '.' or d == '..':
+        continue
+      dirContents = ls_R_ALL(subPath)
+      for sub in dirContents:
+        contents.append(sub)
+  return contents
 
 def usage():
-  print("Usage: " + os.path.basename(sys.argv[0]) + " {options} -o [playlist file] [dir] {dir}...")
-  print(" options:")
-  print("  -a appends to the playlist file if it exists")
-  print("  -m produces m3u output (default: you can leave this out)")
-  print("  -x produces xspf output")
+  log("Usage: " + os.path.basename(sys.argv[0]) + " {options} -o [playlist file] [dir] {dir}...")
+  log(" options:")
+  log("  -a appends to the playlist file if it exists")
+  log("  -m produces m3u output (default: you can leave this out)")
+  log("  -x produces xspf output")
   sys.exit(0)
 
 def write_m3u_playlist(m3u, f, append):
@@ -88,12 +110,12 @@ def write_m3u_playlist(m3u, f, append):
       fp = open(f, "ab")
     else:
       fp = open(f, "wb")
-  except Exception, e:
+  except Exception as e:
     if append:
       op = "append"
     else:
       op = "writing"
-    print("Can't open %s for %s: %s" % (f, op, str(e)))
+    log("Can't open %s for %s: %s" % (f, op, str(e)))
     return False
 
   try:
@@ -101,8 +123,8 @@ def write_m3u_playlist(m3u, f, append):
     for line in m3u:
       fp.write(line)
       fp.write("\n")
-  except Exception, e:
-    print("Can't write to %s: %s" % (f, str(e)))
+  except Exception as e:
+    log("Can't write to %s: %s" % (f, str(e)))
     return False
 
   return True
@@ -118,15 +140,15 @@ def write_xspf_playlist(playlist, playlistfile, append):
       offset -= 32
       fp.seek(st.st_size + offset)
       tmp = fp.read().lower()
-      print "tmp:", tmp
+      log("tmp:" + tmp)
       pos = tmp.find("</tracklist>")
-      print "offset:", offset
-      print "pos:", pos
+      log("offset:" + offset)
+      log("pos:" + pos)
       while pos > 0:
         pos += 1
-        print "-pos:", pos
+        log("-pos:" + pos)
         if tmp[pos] == ">":
-          print "seeking to:", st.st_size + offset - pos
+          log("seeking to:" + (st.st_size + offset - pos))
           fp.seek(st.st_size + offset - pos)
           found = True
           break
@@ -134,7 +156,7 @@ def write_xspf_playlist(playlist, playlistfile, append):
         break
     if not found:
       fp.close()
-      print("Can't find closing trackList tag in %f; can't append. Aborting"\
+      log("Can't find closing trackList tag in %f; can't append. Aborting"\
         % (playlistfile))
       return False
   else:
@@ -202,7 +224,7 @@ def info_to_xspf_item(info):
   ret.append("      <location>%s</location>" % xml_safe(xspf_location(info["file"])))
   title = ""
   for k in ["artist", "year", "album", "tracknumber", "title"]:
-    if info.has_key(k):
+    if k in info:
       if title != "":
         title += " - "
       try:
@@ -230,7 +252,7 @@ def get_mp3_tag_info(f):
     for k in ["TPE1", "TDRC|TYER|TDAT", "TALB", "TRCK", "TIT2"]:
       val = ""
       for subk in k.split("|"):
-        if i.has_key(subk):
+        if subk in i:
           try:
             val = str(i[subk].text[0])
           except:
@@ -255,9 +277,9 @@ def get_mp3_tag_info(f):
             val = "0" + val
           ret[translation[subk]] = val
           break
-  except Exception, e:
-    print("\r%s\rUnable to read MP3 info for:\n%s" %(blankstr, f))
-    print(" -> %s" % str(e))
+  except Exception as e:
+    log("\r%s\rUnable to read MP3 info for:\n%s" %(blankstr, f))
+    log(" -> %s" % str(e))
   return ret
 
 def m3u_get_mp3_tag_info(f):
@@ -276,17 +298,17 @@ def get_ogg_tag_info(f):
     i = OggVorbis(f)
     ret["length"] = str(i.info.length)
     for k in ["artist", "album", "year", "tracknumber", "title"]:
-      if i.has_key(k):
+      if k in i:
         ret[k] = str(i[k])
-  except Exception, e:
-    print("\r%s\rUnable to read OGG info for\n%s" %(blankstr, f))
-    print(str(e))
+  except Exception as e:
+    log("\r%s\rUnable to read OGG info for\n%s" %(blankstr, f))
+    log(str(e))
   return ret
 
 def info_to_m3u(info):
   ret = ""
   for k in ["artist", "album", "year", "tracknumber", "title"]:
-    if info.has_key(k):
+    if k in info:
       val = str(convertText(info[k]))
       val = val.strip()
       # ignore empty tags
@@ -316,6 +338,7 @@ def info_to_m3u(info):
   return ret
 
 def status(s):
+  s = str(s)
   global quiet
   if quiet:
     return
@@ -323,13 +346,14 @@ def status(s):
   if (len(s) >= len(blankstr)):
     s = s[0:len(blankstr)-3]
     s += "..."
-  sys.stdout.write("\r" + blankstr + "\r" + s + "\r")
+  sys.stdout.write("\r" + blankstr + "\r" + str(s.encode('utf-8')) + "\r")
   sys.stdout.flush()
 
 def get_hr_time(t):
+  t = ("%d" % (t))
   t = int(t)
-  min = str(t / 60)
-  secs = str(t % 60)
+  min= str(int(float(t / 60)))
+  secs = str(int(float(t % 60)))
   if len(min) < 2:
     min = "0" + min
   if len(secs) < 2:
@@ -382,41 +406,38 @@ def main():
     if os.path.isdir(arg):
       dirs.append(arg)
     else:
-      print("Unable to locate dir '" + arg + "'")
+      log("Unable to locate dir '" + arg + "'")
       sys.exit(0)
 
   if len(dirs) == 0:
-    print("You must specify at least one dir")
+    log("You must specify at least one dir")
     sys.exit(1)
 
   playlist = []
   start = time.time()
   if len(playlistfile) == 0:
-    print("You must specify an output file with -o")
+    log("You must specify an output file with -o")
   for d in dirs:
-    print("Listing contents of '" + d + "'...")
+    log("Listing contents of '" + d + "'...")
     files = ls_R(d)
-    print("Generating playlist content (" + str(len(files)) + " files)...")
+    log("Generating playlist content (" + str(len(files)) + " files)...")
     
     numfiles = len(files)
     idx = 0
     gen_start = time.time()
-    for f in files:
+    for fpath in files:
       idx += 1
-      if f[0] != os.sep:
-        fpath = d + os.sep + f
-      else:
-        fpath = d + f
       if playlist_type == 0:
         info = get_m3u_info(fpath)
       else:
         info = get_xspf_info(fpath)
-      perc = idx * 100 / numfiles
+      perc = int(float(idx * 100 / numfiles))
       p = str(perc)
       if perc < 10:
         p + "0" + p
       etr = (numfiles - idx) * ((time.time() - gen_start) / float(idx))
-      status("[ " + p + " %] [etr: " + get_hr_time(etr) + "] " + os.path.basename(f))
+      #status("[ " + str(int(float(p))) + " %] [etr: " + get_hr_time(etr) + "] " + os.path.basename(fpath))
+      status("[%s %%] [etr: %s] %s" % (p, get_hr_time(etr), os.path.basename(fpath)))
       if len(info):
         playlist.append(info)
 
@@ -426,17 +447,15 @@ def main():
     else:
       write_xspf_playlist(playlist, playlistfile, append)
   else:
-    print("No information found")
+    log("No information found")
 
   runtime = int(time.time() - start);
   status("")
-  print("Run time: " + get_hr_time(runtime))
+  log("Run time: " + get_hr_time(runtime))
   
 if __name__ == "__main__":
   try:
     main()
   except KeyboardInterrupt:
-    print("\n (Aborted)")
-  #except Exception, e:
-  #  print("\n FAIL: %s" % str(e))
+    log("\n (Aborted)")
 
