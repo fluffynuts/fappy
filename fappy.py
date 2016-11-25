@@ -3,6 +3,12 @@
 import os
 import sys
 try:
+  import win_unicode_console
+  win_unicode_console.enable()
+except:
+  pass  # just trying to make console not suck for windows
+
+try:
   from xml.dom import minidom
 except:
   pass
@@ -62,9 +68,9 @@ def convertText(text, action = "replace"):
 
 def log(s):
   try:
-    print(s.encode('utf-8'))
-  except Exception as e:
     print(s)
+  except Exception as e:
+    print('print error: ', e)
 
 list_item_count = 0
 
@@ -75,11 +81,8 @@ def ls_R(dir):
     if os.path.isfile(f):
       files.append(f)
   status("")
-  print("")
-  for item in allItems:
-    if os.path.isfile(item):
-      files.append(item)
   log("%i files" % (len(files)))
+  files.sort()
   return files
 
 def ls_R_ALL(dir):
@@ -283,7 +286,7 @@ def get_mp3_tag_info(f):
           ret[translation[subk]] = val
           break
   except Exception as e:
-    log("\r%s\rUnable to read MP3 info for:\n%s" %(blankstr, f))
+    log("\r%s\rWARN: Unable to read MP3 info for:\n%s" %(blankstr, f))
     log(" -> %s" % str(e))
   return ret
 
@@ -306,7 +309,7 @@ def get_ogg_tag_info(f):
       if k in i:
         ret[k] = str(i[k])
   except Exception as e:
-    log("\r%s\rUnable to read OGG info for\n%s" %(blankstr, f))
+    log("\r%s\rWARN: Unable to read OGG info for\n%s" %(blankstr, f))
     log(str(e))
   return ret
 
@@ -351,7 +354,7 @@ def status(s):
   if (len(s) >= len(blankstr)):
     s = s[0:len(blankstr)-3]
     s += "..."
-  sys.stdout.write("\r" + blankstr + "\r" + str(s.encode('utf-8')) + "\r")
+  sys.stdout.write("\r" + blankstr + "\r" + s + "\r")
   sys.stdout.flush()
 
 def get_hr_time(t):
