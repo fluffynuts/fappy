@@ -30,6 +30,13 @@ except Exception as ex:
   print("work with others as well")
   sys.exit(1)
 
+if sys.version_info.major == 2:
+  write = lambda fp, str: fp.write(str)
+elif sys.version_info.major == 3:
+  write = lambda fp, str: fp.write(str.encode('utf-8'))
+else:
+  raise Exception('Don\'t know how to write to files in Python v%i' % (sys.version_info.major))
+
 music_extensions = [".mp3", ".ogg", ".mp2", ".wav", ".wma"]
 
 def convertText(text, action = "replace"):
@@ -119,10 +126,9 @@ def write_m3u_playlist(m3u, f, append):
     return False
 
   try:
-    fp.write("#EXTM3U\n")
+    write(fp, '#EXTM3U\n')
     for line in m3u:
-      fp.write(line)
-      fp.write("\n")
+      write(fp, line + '\n')
   except Exception as e:
     log("Can't write to %s: %s" % (f, str(e)))
     return False
@@ -164,14 +170,13 @@ def write_xspf_playlist(playlist, playlistfile, append):
 
   if not append:
     # write xml header
-    fp.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-    fp.write("<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\">\n")
-    fp.write("  <trackList>\n")
+    write(fp, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+    write(fp, "<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\">\n")
+    write(fp, "  <trackList>\n")
   for item in playlist:
-    fp.write(item)
-    fp.write("\n")
+    write(fp, item + '\n')
   # write xml footer
-  fp.write("  </trackList>\n</playlist>\n")
+  write(fp, "  </trackList>\n</playlist>\n")
   fp.close()
   return True
 
