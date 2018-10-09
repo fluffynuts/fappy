@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # vim: expandtab shiftwidth=2 tabstop=2
 import os
 import sys
@@ -67,6 +67,9 @@ def convertText(text, action = "replace"):
     return ret
 
 def log(s):
+  global really_quiet
+  if really_quiet:
+    return
   try:
     print(s)
   except Exception as e:
@@ -371,6 +374,7 @@ def get_hr_time(t):
 def main():
   global blankstr
   global quiet
+  global really_quiet
   blankstr = ""
 
   if len(sys.argv) == 0:
@@ -384,6 +388,7 @@ def main():
   lastarg = ""
   append = False
   quiet = False
+  really_quiet = False
   playlist_type = 0
   for arg in sys.argv[1:]:
     if arg == "-x":
@@ -393,6 +398,11 @@ def main():
       continue
     if arg == "-q":
       quiet = True
+      lastarg = ""
+      continue
+    if arg == "-qq":
+      quiet = True
+      really_quiet = True
       lastarg = ""
       continue
     if arg == "-m":
