@@ -39,7 +39,7 @@ except Exception as ex:
 if sys.version_info.major == 2:
   write = lambda fp, str: fp.write(str)
 elif sys.version_info.major == 3:
-  write = lambda fp, str: fp.write(str.encode('utf-8'))
+  write = lambda fp, str: fp.write(str.encode('utf-8', 'ignore'))
 else:
   raise Exception('Don\'t know how to write to files in Python v%i' % (sys.version_info.major))
 
