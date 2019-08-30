@@ -1,2 +1,7 @@
 #!/bin/bash
-$(dirname $0)/fappy.py $@
+THIS_SCRIPT=$0;
+LINKED=$(readlink $THIS_SCRIPT)
+if test ! -z "$LINKED"; then
+  THIS_SCRIPT=$LINKED
+fi
+$(dirname $THIS_SCRIPT)/fappy.py $@
