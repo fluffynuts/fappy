@@ -160,46 +160,40 @@ def write_m3u_playlist(m3u, f, append):
     return True
 
 
+def read_str(fp, offset, direction=2):
+    fp.seek(offset, direction)
+    buffer = fp.read()
+    fp.seek(offset, direction)
+    if is_python_3:
+        return buffer.decode("utf-8")
+    if is_python_2:
+        return str(buffer)
+    raise Exception("Don't know how to do bytes->string in this version of python")
+
+
 def write_xspf_playlist(playlist, playlist_file, append):
     """Writes out an xspf playlist from info provided"""
     if append and os.path.isfile(playlist_file):
         st = os.stat(playlist_file)
         fp = open(playlist_file, "rb+")
-        offset = 0
+        offset = -128
         found = False
-        while offset + st.st_size > 0:
-            offset -= 32
-            fp.seek(st.st_size + offset)
-            tmp = str(fp.read().lower())
-            log("tmp:" + tmp)
-            pos = tmp.find("</tracklist>")
-            log("offset: %i" % offset)
-            log("pos: %i" % pos)
-            while pos > 0:
-                pos += 1
-                log("-pos: %i" % pos)
-                if tmp[pos] == ">":
-                    log("seeking to:" + str(st.st_size + offset - pos))
-                    fp.seek(st.st_size + offset - pos)
-                    found = True
-                    break
-            if found:
-                break
+        tmp = read_str(fp, offset, 2)
+        pos = tmp.find("</trackList>")
+        if pos > -1:
+            offset += pos
+            tmp = read_str(fp, offset, 2)
+            found = True
         if not found:
             fp.close()
             log("Can't find closing trackList tag in %f; can't append. Aborting" % playlist_file)
             return False
     else:
         fp = open(playlist_file, "wb")
-
-    if append:
-        # if the file exists and has </playlist> at the end, remove the last line
-        print("TODO: trim an existing </playlist> off of any existing file for append mode on xspf")
-    else:
-        # write xml header
         write(fp, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
         write(fp, "<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\">\n")
         write(fp, "  <trackList>\n")
+
     for item in playlist:
         write(fp, item + '\n')
     # write xml footer
@@ -415,9 +409,9 @@ def main():
     for i in range(76):
         blank_string += " "
 
-    playlistfile = ""
+    playlist_file = ""
     dirs = []
-    lastarg = ""
+    last_arg = ""
     append = False
     quiet = False
     really_quiet = False
@@ -426,16 +420,16 @@ def main():
         if arg == "-x":
             # set playlist type to xspf
             playlist_type = 1
-            lastarg = ""
+            last_arg = ""
             continue
         if arg == "-q":
             quiet = True
-            lastarg = ""
+            last_arg = ""
             continue
         if arg == "-qq":
             quiet = True
             really_quiet = True
-            lastarg = ""
+            last_arg = ""
             continue
         if arg == "-m":
             # set playlist type to m3u (default)
@@ -447,11 +441,11 @@ def main():
         if arg == "-h" or arg == "--help":
             usage()
         if arg == "-o":
-            lastarg = arg
+            last_arg = arg
             continue
-        if lastarg == "-o":
-            playlistfile = arg
-            lastarg = ""
+        if last_arg == "-o":
+            playlist_file = arg
+            last_arg = ""
             continue
         if os.path.isdir(arg):
             dirs.append(arg)
@@ -465,7 +459,7 @@ def main():
 
     playlist = []
     start = time.time()
-    if len(playlistfile) == 0:
+    if len(playlist_file) == 0:
         log("You must specify an output file with -o")
     for d in dirs:
         log("Listing contents of '" + d + "'...")
@@ -493,9 +487,9 @@ def main():
 
     if len(playlist) > 0:
         if playlist_type == 0:
-            write_m3u_playlist(playlist, playlistfile, append)
+            write_m3u_playlist(playlist, playlist_file, append)
         else:
-            write_xspf_playlist(playlist, playlistfile, append)
+            write_xspf_playlist(playlist, playlist_file, append)
     else:
         log("No information found")
 
