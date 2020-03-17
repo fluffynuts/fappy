@@ -2,15 +2,24 @@
 # vim: expandtab shiftwidth=2 tabstop=2
 import os
 import sys
+import unicodedata
+import time
+
+is_python_2 = sys.version_info.major == 2
+is_python_3 = sys.version_info.major == 3
+list_item_count = 0
+blank_string = ""
+quiet = False
+really_quiet = False
+music_extensions = [".mp3", ".ogg", ".mp2", ".wav", ".wma"]
+
 
 try:
+    # noinspection PyUnresolvedReferences
     import win_unicode_console
-
     win_unicode_console.enable()
 except:
     pass  # just trying to make console not suck for windows
-
-import time
 
 try:
     import mutagen
@@ -41,16 +50,14 @@ def write3(fp, s):
     fp.write(s.encode("utf-8", "ignore"))
 
 
-if sys.version_info.major == 2:
+if is_python_2:
     # write = lambda fp, str: fp.write(str)
     write = write2
-elif sys.version_info.major == 3:
+elif is_python_3:
     # write = lambda fp, str: fp.write(str.encode('utf-8', 'ignore'))
     write = write3
 else:
-    raise Exception('Don\'t know how to write to files in Python v%i' % (sys.version_info.major))
-
-music_extensions = [".mp3", ".ogg", ".mp2", ".wav", ".wma"]
+    raise Exception('Don\'t know how to write to files in Python v%i' % sys.version_info.major)
 
 
 def convert_text(text, action="replace"):
@@ -62,16 +69,15 @@ def convert_text(text, action="replace"):
     If it fails return raise the exception
     """
     try:
-        # FIXME: none of this
-        temp = unicode(text, "utf-8")
+        temp = text.encode("utf-8")
         fixed = unicodedata.normalize('NFKD', temp).encode('ASCII', action)
         print("convertText: fixed: %s" % fixed)
         return fixed
-    except Exception as errorInfo:
+    except Exception:
         ret = ""
         for c in text:
             o = ord(c)
-            if o > 31 and o < 123:
+            if 31 < o < 123:
                 ret += c
         return ret
 
@@ -84,9 +90,6 @@ def log(s):
         print(s)
     except Exception as e:
         print('print error: ', e)
-
-
-list_item_count = 0
 
 
 def ls_recursive(folder):
@@ -105,7 +108,7 @@ def ls_recursive_all(folder):
     global list_item_count
     contents = os.listdir(folder)
     list_item_count += len(contents)
-    status("%i items found..." % (list_item_count))
+    status("%i items found..." % list_item_count)
     contents_copy = contents[:]
     contents = []
     for f in contents_copy:
@@ -157,11 +160,11 @@ def write_m3u_playlist(m3u, f, append):
     return True
 
 
-def write_xspf_playlist(playlist, playlistfile, append):
+def write_xspf_playlist(playlist, playlist_file, append):
     """Writes out an xspf playlist from info provided"""
-    if append and os.path.isfile(playlistfile):
-        st = os.stat(playlistfile)
-        fp = open(playlistfile, "rb+")
+    if append and os.path.isfile(playlist_file):
+        st = os.stat(playlist_file)
+        fp = open(playlist_file, "rb+")
         offset = 0
         found = False
         while offset + st.st_size > 0:
@@ -171,10 +174,10 @@ def write_xspf_playlist(playlist, playlistfile, append):
             log("tmp:" + tmp)
             pos = tmp.find("</tracklist>")
             log("offset: %i" % offset)
-            log("pos: %i", pos)
+            log("pos: %i" % pos)
             while pos > 0:
                 pos += 1
-                log("-pos:" + pos)
+                log("-pos: %i" % pos)
                 if tmp[pos] == ">":
                     log("seeking to:" + str(st.st_size + offset - pos))
                     fp.seek(st.st_size + offset - pos)
@@ -184,11 +187,10 @@ def write_xspf_playlist(playlist, playlistfile, append):
                 break
         if not found:
             fp.close()
-            log("Can't find closing trackList tag in %f; can't append. Aborting" \
-                % playlistfile)
+            log("Can't find closing trackList tag in %f; can't append. Aborting" % playlist_file)
             return False
     else:
-        fp = open(playlistfile, "wb")
+        fp = open(playlist_file, "wb")
 
     if append:
         # if the file exists and has </playlist> at the end, remove the last line
@@ -287,7 +289,6 @@ def get_mp3_tag_info(f):
         translation = {"TPE1": "artist", "TDRC": "year", "TYER": "year", "TDAT": "year",
                        "TRCK": "tracknumber", "TIT2": "title", "TALB": "album"}
         for k in ["TPE1", "TDRC|TYER|TDAT", "TALB", "TRCK", "TIT2"]:
-            val = ""
             for subk in k.split("|"):
                 if subk in i:
                     try:
@@ -368,7 +369,6 @@ def info_to_m3u(info):
             if ret != "":
                 ret += " - "
             ret += val
-            have_something = True
 
     # fall back on file name
     if ret == "":
@@ -402,11 +402,6 @@ def get_hr_time(t):
     if len(secs) < 2:
         secs = "0" + secs
     return minutes + ":" + secs
-
-
-blank_string = ""
-quiet = False
-really_quiet = False
 
 
 def main():
@@ -477,26 +472,26 @@ def main():
         files = ls_recursive(d)
         log("Generating playlist content (" + str(len(files)) + " files)...")
 
-        numfiles = len(files)
+        file_count = len(files)
         idx = 0
         gen_start = time.time()
-        for fpath in files:
+        for file_path in files:
             idx += 1
             if playlist_type == 0:
-                info = get_m3u_info(fpath)
+                info = get_m3u_info(file_path)
             else:
-                info = get_xspf_info(fpath)
-            perc = int(float(idx * 100 / numfiles))
-            p = str(perc)
-            if perc < 10:
-                p + "0" + p
-            etr = (numfiles - idx) * ((time.time() - gen_start) / float(idx))
-            # status("[ " + str(int(float(p))) + " %] [etr: " + get_hr_time(etr) + "] " + os.path.basename(fpath))
-            status("[%s %%] [etr: %s] %s" % (p, get_hr_time(etr), os.path.basename(fpath)))
+                info = get_xspf_info(file_path)
+            percent_complete = int(float(idx * 100 / file_count))
+            p = str(percent_complete)
+            if percent_complete < 10:
+                p = "0%s" % p
+            etr = (file_count - idx) * ((time.time() - gen_start) / float(idx))
+
+            status("[%s %%] [etr: %s] %s" % (p, get_hr_time(etr), os.path.basename(file_path)))
             if len(info):
                 playlist.append(info)
 
-    if (len(playlist) > 0):
+    if len(playlist) > 0:
         if playlist_type == 0:
             write_m3u_playlist(playlist, playlistfile, append)
         else:
@@ -504,7 +499,7 @@ def main():
     else:
         log("No information found")
 
-    runtime = int(time.time() - start);
+    runtime = int(time.time() - start)
     status("")
     log("Run time: " + get_hr_time(runtime))
 
