@@ -272,7 +272,10 @@ def xml_safe(s):
 
 
 def xspf_location(path):
-    return "file://%s" % (path.replace(" ", "%20"))
+    if sys.platform == "win32":
+        return path
+    else:
+        return "file://%s" % (path.replace(" ", "%20"))
 
 
 def get_mp3_tag_info(f):
