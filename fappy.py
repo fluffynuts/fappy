@@ -13,13 +13,19 @@ quiet = False
 really_quiet = False
 music_extensions = [".mp3", ".ogg", ".mp2", ".wav", ".wma"]
 
-
 try:
     # noinspection PyUnresolvedReferences
     import win_unicode_console
     win_unicode_console.enable()
 except:
     pass  # just trying to make console not suck for windows
+
+have_pathlib = False
+try:
+    from pathlib import Path
+    have_pathlib = True
+except:
+    pass
 
 try:
     import mutagen
@@ -174,7 +180,6 @@ def read_str(fp, offset, direction=2):
 def write_xspf_playlist(playlist, playlist_file, append):
     """Writes out an xspf playlist from info provided"""
     if append and os.path.isfile(playlist_file):
-        st = os.stat(playlist_file)
         fp = open(playlist_file, "rb+")
         offset = -128
         found = False
@@ -272,10 +277,9 @@ def xml_safe(s):
 
 
 def xspf_location(path):
-    if sys.platform == "win32":
-        return path
-    else:
-        return "file://%s" % (path.replace(" ", "%20"))
+    if have_pathlib:
+        return Path(path).as_uri()
+    return xml_safe("file://%s" % (path.replace(" ", "%20")))
 
 
 def get_mp3_tag_info(f):
