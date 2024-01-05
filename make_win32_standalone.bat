@@ -1,1 +1,1 @@
-pyinstaller --onefile --name=fappy.py fappy.py
+pyinstaller --hidden-import mutagen --onefile --name=fappy fappy.py
